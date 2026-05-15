@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Pengambilan Paspor - Dabo Singkep</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        }
+        #modal-video.mirror {
+            transform: scaleX(-1);
+        }
+        .loader {
+            border-top-color: #3b82f6;
+            animation: spinner 1.5s linear infinite;
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .hidden-view { display: none; }
+        .camera-overlay {
+            position: fixed;
+            inset: 0;
+            background: black;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+
+    <!-- Header -->
+    <header class="gradient-bg text-white py-6 px-4 shadow-lg flex justify-between items-center">
+        <div class="text-left">
+            <h1 class="text-xl md:text-2xl font-bold">Kantor Imigrasi Kelas II Non TPI Dabo Singkep</h1>
+            <p class="text-xs opacity-90">Sistem Digital Pengambilan Paspor</p>
+        </div>
+        <button id="navAdminBtn" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg text-sm transition">
+            Menu Admin
+        </button>
+    </header>
+
+    <!-- VIEW: FORMULIR PEMOHON -->
+    <main id="userView" class="max-w-3xl mx-auto p-4 md:p-8">
+        <div class="bg-white rounded-xl shadow-xl p-6 md:p-10 -mt-10 relative z-10">
+            <h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-2">Formulir Pengambilan</h2>
+            <form id="passportForm" class="space-y-6">
+                
+                <!-- Identitas Dasar -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Nama Pemilik Paspor</label>
+                        <input type="text" id="userName" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Masukkan nama lengkap">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Nomor Paspor</label>
+                        <input type="text" id="passportNumber" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Contoh: X1234567">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Nomor HP / WhatsApp</label>
+                    <input type="tel" id="phoneNumber" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="08xxxx">
+                </div>
+
+                <hr class="border-gray-100">
+
+                <!-- Upload Dokumen -->
+                <div class="space-y-6">
+                    <!-- Bagian KTP -->
+                    <div>
+                        <label class="block text-sm font-semibold text-blue-700 mb-2">Dokumen KTP (Wajib)</label>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button type="button" onclick="openCaptureModal('ktp')" class="flex-1 bg-blue-50 text-blue-700 border border-blue-200 py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-100 transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                Gunakan Kamera
+                            </button>
+                            <label class="flex-1 cursor-pointer bg-gray-50 text-gray-700 border border-gray-200 py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-100 transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                <span>Pilih File</span>
+                                <input type="file" id="ktpFile" accept="image/*" class="hidden" onchange="handleFileSelect(this, 'ktp')">
+                            </label>
+                        </div>
+                        <div id="ktp-preview-container" class="hidden mt-3 p-2 border rounded-lg relative bg-gray-50">
+                            <img id="ktp-preview-img" class="w-full h-40 object-cover rounded shadow-sm">
+                            <button type="button" onclick="clearPreview('ktp')" class="absolute top-4 right-4 bg-red-500 text-white p-1 rounded-full shadow">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Bagian Surat Kuasa -->
+                    <div class="bg-yellow-50 p-4 rounded-xl border border-yellow-100">
+                        <label class="block text-sm font-semibold text-yellow-800 mb-2">Surat Kuasa / KK (Opsional)</label>
+                        <p class="text-xs text-yellow-700 mb-3">*Diisi jika pengambilan diwakilkan</p>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button type="button" onclick="openCaptureModal('rep')" class="flex-1 bg-white text-yellow-800 border border-yellow-200 py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-yellow-100 transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                Gunakan Kamera
+                            </button>
+                            <label class="flex-1 cursor-pointer bg-white text-yellow-800 border border-yellow-200 py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-yellow-100 transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                <span>Pilih File</span>
+                                <input type="file" id="representativeFile" accept="image/*" class="hidden" onchange="handleFileSelect(this, 'rep')">
+                            </label>
+                        </div>
+                        <div id="rep-preview-container" class="hidden mt-3 p-2 border rounded-lg relative bg-white">
+                            <img id="rep-preview-img" class="w-full h-40 object-cover rounded shadow-sm">
+                            <button type="button" onclick="clearPreview('rep')" class="absolute top-4 right-4 bg-red-500 text-white p-1 rounded-full shadow">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Bagian Foto Bukti Pengambilan (Selfie) -->
+                    <div>
+                        <label class="block text-sm font-semibold text-green-700 mb-2">Foto Bukti Pengambilan (Wajib) </label>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button type="button" onclick="openCaptureModal('bukti')" class="flex-1 bg-green-50 text-green-700 border border-green-200 py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-green-100 transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                Gunakan Kamera
+                            </button>
+                            <label class="flex-1 cursor-pointer bg-green-50 text-green-700 border border-green-200 py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-green-100 transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                <span>Pilih File</span>
+                                <input type="file" id="buktiFile" accept="image/*" class="hidden" onchange="handleFileSelect(this, 'bukti')">
+                            </label>
+                        </div>
+                        <div id="bukti-preview-container" class="hidden mt-3 p-2 border rounded-lg relative bg-green-50">
+                            <img id="bukti-preview-img" class="w-full h-56 object-cover rounded shadow-md border-2 border-green-200">
+                            <button type="button" onclick="clearPreview('bukti')" class="absolute top-4 right-4 bg-red-500 text-white p-1 rounded-full shadow">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="border-gray-100">
+
+                <button type="submit" class="w-full bg-blue-700 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-blue-800 transition transform active:scale-95">
+                    Kirim Data Pengambilan
+                </button>
+            </form>
+        </div>
+    </main>
+
+    <!-- FULLSCREEN CAMERA MODAL -->
+    <div id="cameraModal" class="camera-overlay hidden">
+        <div class="flex justify-between items-center p-4 text-white">
+            <span id="cameraTitle" class="font-bold">Ambil Foto</span>
+            <button onclick="closeCaptureModal()" class="p-2 bg-white/10 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+        </div>
+        <div class="flex-1 relative bg-black flex items-center justify-center overflow-hidden">
+            <video id="modal-video" autoplay playsinline class="w-full h-full object-contain"></video>
+            <div id="modal-loader" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900">
+                <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-10 w-10 mb-2"></div>
+            </div>
+        </div>
+        <div class="p-8 bg-black/80 flex justify-center items-center gap-8">
+            <button onclick="toggleModalCamera()" class="p-4 bg-gray-700 text-white rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            </button>
+            <button onclick="captureModalPhoto()" class="w-20 h-20 bg-white rounded-full border-8 border-gray-400 flex items-center justify-center active:scale-90 transition"></button>
+            <div class="w-14"></div> <!-- Spacer -->
+        </div>
+    </div>
+
+    <!-- VIEW: LOGIN ADMIN -->
+    <main id="adminLoginView" class="max-w-md mx-auto p-4 md:p-8 hidden-view">
+        <div class="bg-white rounded-xl shadow-xl p-8 mt-10 text-center">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Login Admin</h2>
+            <form id="loginForm" class="space-y-4 text-left">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Username</label>
+                    <input type="text" id="adminUser" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="adminPass" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <button type="submit" class="w-full bg-blue-700 text-white py-2 rounded-lg font-bold hover:bg-blue-800">Masuk</button>
+                <button type="button" onclick="showView('user')" class="w-full text-gray-500 text-sm mt-2">Kembali ke Beranda</button>
+            </form>
+        </div>
+    </main>
+
+    <!-- VIEW: DASHBOARD ADMIN -->
+    <main id="adminDashboardView" class="max-w-6xl mx-auto p-4 md:p-8 hidden-view">
+        <div class="bg-white rounded-xl shadow-xl p-6">
+            <div class="flex justify-between items-center mb-6 text-wrap">
+                <h2 class="text-xl md:text-2xl font-bold text-gray-800">Data Pengambilan Paspor</h2>
+                <button id="logoutBtn" class="bg-red-100 text-red-600 px-4 py-2 rounded-lg text-sm font-bold">Logout</button>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="p-3 border">Waktu Input</th>
+                            <th class="p-3 border">Nama Pemilik</th>
+                            <th class="p-3 border">No. Paspor</th>
+                            <th class="p-3 border text-center">Dokumen</th>
+                            <th class="p-3 border text-center">Foto Bukti</th>
+                            <th class="p-3 border text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminDataTable"></tbody>
+                </table>
+            </div>
+            <p id="noDataMsg" class="text-center text-gray-500 my-8 hidden">Belum ada data pengambilan.</p>
+        </div>
+    </main>
+
+    <!-- Modal Success -->
+    <div id="successModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-sm w-full text-center">
+            <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Data Terkirim</h3>
+            <p class="text-gray-600 text-sm mb-6">Data Anda telah berhasil disimpan di sistem.</p>
+            <button onclick="location.reload()" class="w-full bg-blue-700 text-white py-2 rounded-lg font-semibold">Tutup</button>
+        </div>
+    </div>
+
+    <script>
+        // State Management
+        let modalStream = null;
+        let modalCameraFront = false;
+        let isAdminLoggedIn = false;
+        let activeModalTarget = null; // 'ktp', 'rep', or 'bukti'
+
+        // Images data (Base64)
+        const storedImages = {
+            ktp: null,
+            rep: null,
+            bukti: null
+        };
+
+        const views = {
+            user: document.getElementById('userView'),
+            login: document.getElementById('adminLoginView'),
+            dashboard: document.getElementById('adminDashboardView')
+        };
+        
+        const modalVideo = document.getElementById('modal-video');
+        
+        // --- Navigation Logic ---
+        function showView(viewKey) {
+            Object.keys(views).forEach(key => views[key].classList.add('hidden-view'));
+            views[viewKey].classList.remove('hidden-view');
+            
+            if (viewKey === 'user') {
+                document.getElementById('navAdminBtn').classList.remove('hidden');
+            } else {
+                document.getElementById('navAdminBtn').classList.add('hidden');
+            }
+
+            if (viewKey === 'dashboard') loadAdminData();
+        }
+
+        document.getElementById('navAdminBtn').addEventListener('click', () => {
+            if (isAdminLoggedIn) showView('dashboard');
+            else showView('login');
+        });
+
+        // --- Camera Logic (Unified Modal) ---
+        async function openCaptureModal(target) {
+            activeModalTarget = target;
+            
+            // Set judul modal
+            const titles = {
+                'ktp': 'Foto KTP',
+                'rep': 'Foto Surat Kuasa / KK',
+                'bukti': 'Foto Selfie Pengambilan'
+            };
+            document.getElementById('cameraTitle').innerText = titles[target];
+            
+            // Default kamera depan untuk selfie (bukti), kamera belakang untuk dokumen
+            modalCameraFront = (target === 'bukti');
+            
+            document.getElementById('cameraModal').classList.remove('hidden');
+            document.getElementById('modal-loader').classList.remove('hidden');
+            startModalCamera();
+        }
+
+        async function startModalCamera() {
+            if (modalStream) {
+                modalStream.getTracks().forEach(t => t.stop());
+            }
+            try {
+                modalStream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: modalCameraFront ? "user" : "environment",
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+                modalVideo.srcObject = modalStream;
+                modalVideo.onloadedmetadata = () => {
+                    modalVideo.play();
+                    document.getElementById('modal-loader').classList.add('hidden');
+                    modalVideo.className = `w-full h-full object-contain ${modalCameraFront ? 'mirror' : ''}`;
+                };
+            } catch (err) {
+                alert("Tidak dapat mengakses kamera. Pastikan izin kamera diberikan.");
+                closeCaptureModal();
+            }
+        }
+
+        function toggleModalCamera() {
+            modalCameraFront = !modalCameraFront;
+            startModalCamera();
+        }
+
+        function captureModalPhoto() {
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = modalVideo.videoWidth;
+            tempCanvas.height = modalVideo.videoHeight;
+            const tCtx = tempCanvas.getContext('2d');
+            
+            if (modalCameraFront) {
+                tCtx.translate(tempCanvas.width, 0);
+                tCtx.scale(-1, 1);
+            }
+            tCtx.drawImage(modalVideo, 0, 0);
+            
+            // Tambahkan Watermark jika itu adalah foto Bukti
+            if (activeModalTarget === 'bukti') {
+                const now = new Date();
+                const ts = `${now.toLocaleDateString('id-ID', {weekday:'long', day:'2-digit', month:'long', year:'numeric'})} - ${now.toLocaleTimeString()}`;
+                tCtx.setTransform(1, 0, 0, 1, 0, 0);
+                tCtx.fillStyle = "rgba(0,0,0,0.6)";
+                tCtx.fillRect(0, tempCanvas.height - 60, tempCanvas.width, 60);
+                tCtx.fillStyle = "white";
+                tCtx.font = "bold 24px Arial";
+                tCtx.textAlign = "center";
+                tCtx.fillText(ts, tempCanvas.width/2, tempCanvas.height - 22);
+            }
+            
+            const base64 = tempCanvas.toDataURL('image/jpeg', 0.8);
+            updatePreview(activeModalTarget, base64);
+            closeCaptureModal();
+        }
+
+        function closeCaptureModal() {
+            if (modalStream) {
+                modalStream.getTracks().forEach(t => t.stop());
+                modalStream = null;
+            }
+            document.getElementById('cameraModal').classList.add('hidden');
+        }
+
+        // --- File & Preview Helpers ---
+        function handleFileSelect(input, target) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => updatePreview(target, e.target.result);
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function updatePreview(target, base64) {
+            storedImages[target] = base64;
+            const container = document.getElementById(`${target}-preview-container`);
+            const img = document.getElementById(`${target}-preview-img`);
+            img.src = base64;
+            container.classList.remove('hidden');
+        }
+
+        function clearPreview(target) {
+            storedImages[target] = null;
+            document.getElementById(`${target}-preview-container`).classList.add('hidden');
+            const fileInputId = target === 'ktp' ? 'ktpFile' : (target === 'rep' ? 'representativeFile' : 'buktiFile');
+            const input = document.getElementById(fileInputId);
+            if(input) input.value = '';
+        }
+
+        // --- Data Management ---
+        document.getElementById('passportForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!storedImages.ktp) {
+                alert("Harap sertakan foto KTP Anda!");
+                return;
+            }
+            if (!storedImages.bukti) {
+                alert("Harap sertakan foto Bukti Pengambilan (Selfie)!");
+                return;
+            }
+
+            const submission = {
+                id: Date.now(),
+                timestamp: new Date().toLocaleString('id-ID'),
+                nama: document.getElementById('userName').value,
+                paspor: document.getElementById('passportNumber').value,
+                hp: document.getElementById('phoneNumber').value,
+                fotoKtp: storedImages.ktp,
+                fotoRep: storedImages.rep,
+                fotoBukti: storedImages.bukti
+            };
+
+            const existingData = JSON.parse(localStorage.getItem('paspor_submissions') || '[]');
+            existingData.unshift(submission);
+            localStorage.setItem('paspor_submissions', JSON.stringify(existingData));
+
+            document.getElementById('successModal').classList.remove('hidden');
+            document.getElementById('successModal').classList.add('flex');
+        });
+
+        // --- Admin Dash Functions ---
+        function loadAdminData() {
+            const data = JSON.parse(localStorage.getItem('paspor_submissions') || '[]');
+            const tableBody = document.getElementById('adminDataTable');
+            const noDataMsg = document.getElementById('noDataMsg');
+            tableBody.innerHTML = '';
+            
+            if (data.length === 0) {
+                noDataMsg.classList.remove('hidden');
+                return;
+            }
+            
+            noDataMsg.classList.add('hidden');
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = "hover:bg-gray-50 transition border-b";
+                row.innerHTML = `
+                    <td class="p-3 border text-xs">${item.timestamp}</td>
+                    <td class="p-3 border font-semibold">${item.nama}</td>
+                    <td class="p-3 border">${item.paspor}</td>
+                    <td class="p-3 border text-center space-y-1">
+                        <button onclick="openModalImg('${item.id}', 'ktp')" class="block w-full text-blue-600 underline text-xs">KTP</button>
+                        ${item.fotoRep ? `<button onclick="openModalImg('${item.id}', 'rep')" class="block w-full text-yellow-600 underline text-xs">Surat Kuasa</button>` : '-'}
+                    </td>
+                    <td class="p-3 border text-center">
+                        <button onclick="openModalImg('${item.id}', 'bukti')" class="text-green-600 underline text-xs font-bold">Lihat Bukti</button>
+                    </td>
+                    <td class="p-3 border text-center">
+                        <button onclick="deleteData(${item.id})" class="text-red-500 p-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        window.openModalImg = (id, type) => {
+            const data = JSON.parse(localStorage.getItem('paspor_submissions') || '[]');
+            const item = data.find(i => i.id == id);
+            if (item) {
+                let imgSrc = (type === 'ktp') ? item.fotoKtp : (type === 'rep' ? item.fotoRep : item.fotoBukti);
+                const win = window.open("");
+                win.document.write(`<html><body style="margin:0;background:#111;display:flex;justify-content:center;align-items:center;height:100vh;"><img src="${imgSrc}" style="max-width:100%;max-height:100%;"></body></html>`);
+            }
+        };
+
+        window.deleteData = (id) => {
+            if(confirm("Hapus data ini?")) {
+                let data = JSON.parse(localStorage.getItem('paspor_submissions') || '[]');
+                data = data.filter(i => i.id != id);
+                localStorage.setItem('paspor_submissions', JSON.stringify(data));
+                loadAdminData();
+            }
+        };
+
+        // Admin Auth
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (document.getElementById('adminUser').value === 'admin' && document.getElementById('adminPass').value === 'admin123') {
+                isAdminLoggedIn = true;
+                showView('dashboard');
+            } else {
+                alert("Login gagal!");
+            }
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            isAdminLoggedIn = false;
+            showView('user');
+        });
+    </script>
+</body>
+</html>
